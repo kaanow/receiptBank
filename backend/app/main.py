@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
+import os
 
 from app.config import settings
 from app.routers import accounts, auth, expenses, reports
@@ -34,3 +37,19 @@ def health():
 @app.get("/")
 def root():
     return {"service": "ReceiptBank API", "docs": "/docs"}
+
+
+# Serve frontend SPA at /app (when static files are present)
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+_INDEX_HTML = os.path.join(_STATIC_DIR, "index.html")
+if os.path.isfile(_INDEX_HTML):
+    app.mount("/app/assets", StaticFiles(directory=os.path.join(_STATIC_DIR, "assets")), name="assets")
+
+    @app.get("/app")
+    @app.get("/app/")
+    def _spa_root():
+        return FileResponse(_INDEX_HTML)
+
+    @app.get("/app/{path:path}")
+    def _spa_catchall(path: str):
+        return FileResponse(_INDEX_HTML)

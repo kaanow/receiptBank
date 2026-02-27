@@ -110,7 +110,7 @@ def report_monthly(
     account_id: Optional[int] = Query(None),
     include_receipts: bool = Query(False),
     taxes_separate: bool = Query(False),
-    format: str = Query("json", regex="^(json|csv)$"),
+    format: str = Query("json", pattern="^(json|csv)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
