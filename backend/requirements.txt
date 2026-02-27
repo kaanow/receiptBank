@@ -12,3 +12,7 @@ gunicorn>=21.0,<23.0
 python-multipart>=0.0.6,<1.0
 passlib[bcrypt]>=1.7,<1.8
 itsdangerous>=2.0,<3.0
+
+pytesseract>=0.3.10,<0.4
+Pillow>=10.0,<11.0
+pdf2image>=1.16,<1.17

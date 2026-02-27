@@ -104,3 +104,12 @@ class ReceiptResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ExtractResponse(BaseModel):
+    date: Optional[datetime] = None
+    amount: Optional[float] = None
+    amount_subtotal: Optional[float] = None
+    tax_gst: Optional[float] = None
+    tax_pst: Optional[float] = None
+    vendor: str = "Unknown"

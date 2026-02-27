@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.accounts_helpers import user_can_access_account
@@ -8,13 +8,84 @@ from app.db import get_db
 from app.models import Account, Expense, Receipt
 from app.receipt_storage import receipt_stored_path
 from app.routers.auth import get_current_user
-from app.schemas import ExpenseCreate, ExpenseResponse, ExpenseUpdate, ReceiptResponse
+from app.schemas import ExpenseCreate, ExpenseResponse, ExpenseUpdate, ReceiptResponse, ExtractResponse
 from app.models import User
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
+
+@router.post("/extract", response_model=ExtractResponse)
+async def extract_receipt(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    from app.ocr import extract_receipt_data
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    data = extract_receipt_data(content, content_type)
+    return ExtractResponse(**data)
+
+
+@router.post("/from-receipt", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
+async def create_expense_from_receipt(
+    file: UploadFile = File(...),
+    account_id: int = Form(...),
+    category: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.accounts_helpers import get_allowed_account_ids
+    from app.ocr import extract_receipt_data
+    if not user_can_access_account(db, current_user.id, account_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    data = extract_receipt_data(content, content_type)
+    from datetime import datetime as dt
+    expense_date = data["date"] or dt.utcnow()
+    expense = Expense(
+        account_id=account_id,
+        amount=data["amount"] or 0.0,
+        amount_subtotal=data["amount_subtotal"],
+        tax_gst=data["tax_gst"],
+        tax_pst=data["tax_pst"],
+        currency="CAD",
+        date=expense_date,
+        vendor=data["vendor"] or "Unknown",
+        category=category or data.get("category"),
+        notes=None,
+        created_by_user_id=current_user.id,
+    )
+    db.add(expense)
+    db.commit()
+    db.refresh(expense)
+    existing_count = 0
+    full_path, stored_relative = receipt_stored_path(expense, account, existing_count, file.filename or "file")
+    full_path.write_bytes(content)
+    receipt = Receipt(
+        expense_id=expense.id,
+        original_filename=file.filename or "file",
+        stored_path=stored_relative,
+        mime_type=content_type,
+    )
+    db.add(receipt)
+    db.commit()
+    db.refresh(expense)
+    return expense
 
 
 @router.get("", response_model=List[ExpenseResponse])
