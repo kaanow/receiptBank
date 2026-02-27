@@ -38,6 +38,12 @@ async def create_expense_from_receipt(
     file: UploadFile = File(...),
     account_id: int = Form(...),
     category: Optional[str] = Form(None),
+    vendor: Optional[str] = Form(None),
+    date: Optional[str] = Form(None),
+    amount: Optional[float] = Form(None),
+    amount_subtotal: Optional[float] = Form(None),
+    tax_gst: Optional[float] = Form(None),
+    tax_pst: Optional[float] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -56,16 +62,35 @@ async def create_expense_from_receipt(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
     data = extract_receipt_data(content, content_type)
     from datetime import datetime as dt
-    expense_date = data["date"] or dt.utcnow()
+    def _opt(s):
+        return (s or "").strip() or None
+    def _opt_float(v):
+        if v is None: return None
+        try: return float(v)
+        except (TypeError, ValueError): return None
+    vendor_val = _opt(vendor)
+    date_val = _opt(date)
+    amount_val = _opt_float(amount) if amount is not None else data["amount"]
+    amount_subtotal_val = _opt_float(amount_subtotal) if amount_subtotal is not None else data["amount_subtotal"]
+    tax_gst_val = _opt_float(tax_gst) if tax_gst is not None else data["tax_gst"]
+    tax_pst_val = _opt_float(tax_pst) if tax_pst is not None else data["tax_pst"]
+    expense_date = dt.utcnow()
+    if date_val:
+        try:
+            expense_date = dt.fromisoformat(date_val.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            pass
+    elif data["date"]:
+        expense_date = data["date"]
     expense = Expense(
         account_id=account_id,
-        amount=data["amount"] or 0.0,
-        amount_subtotal=data["amount_subtotal"],
-        tax_gst=data["tax_gst"],
-        tax_pst=data["tax_pst"],
+        amount=float(amount_val or 0.0),
+        amount_subtotal=amount_subtotal_val,
+        tax_gst=tax_gst_val,
+        tax_pst=tax_pst_val,
         currency="CAD",
         date=expense_date,
-        vendor=data["vendor"] or "Unknown",
+        vendor=(vendor_val or data["vendor"] or "Unknown").strip() or "Unknown",
         category=category or data.get("category"),
         notes=None,
         created_by_user_id=current_user.id,

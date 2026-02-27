@@ -14,7 +14,11 @@ export default function AccountNew() {
     setError("");
     try {
       const acc = await accountsApi.create({ name, friendly_name: friendlyName, type });
-      navigate(`/accounts/${acc.id}`, { replace: true });
+      if (acc && acc.id != null) {
+        navigate(`/accounts/${acc.id}`, { replace: true });
+      } else {
+        setError("Could not create account");
+      }
     } catch (err) {
       setError(err.message);
     }

@@ -46,14 +46,15 @@ DATE_PATTERNS = [
     re.compile(r"\b(20\d{2})[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])\b"),
     re.compile(r"\b(0?[1-9]|[12]\d|3[01])[-/](0?[1-9]|1[0-2])[-/](20\d{2})\b"),
     re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s+(20\d{2})\b", re.I),
+    re.compile(r"\b(0?[1-9]|[12]\d|3[01])[-/](0?[1-9]|1[0-2])[-/](\d{2})\b"),
 ]
 MONEY = re.compile(r"\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)\s*\$?")
 TOTAL_LABELS = re.compile(
     r"(?:total|amount\s+due|balance\s+due|grand\s+total|subtotal|sum)\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)",
     re.I,
 )
-GST_PATTERN = re.compile(r"GST\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
-PST_PATTERN = re.compile(r"PST\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
+GST_PATTERN = re.compile(r"G\.?S\.?T\.?\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
+PST_PATTERN = re.compile(r"P\.?S\.?T\.?\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
 HST_PATTERN = re.compile(r"HST\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
 
 
@@ -75,7 +76,10 @@ def _extract_date(text: str) -> Optional[datetime]:
             if len(g) == 3 and g[0].isdigit() and int(g[0]) > 1900:
                 return datetime(int(g[0]), int(g[1]), int(g[2]))
             if len(g) == 3 and g[2].isdigit():
-                return datetime(int(g[2]), int(g[1]), int(g[0]))
+                y = int(g[2])
+                if y < 100:
+                    y += 2000 if y < 50 else 1900
+                return datetime(y, int(g[1]), int(g[0]))
             if len(g) == 3 and not g[0].isdigit():
                 months = "jan feb mar apr may jun jul aug sep oct nov dec".split()
                 mo = months.index(g[0].lower()[:3]) + 1
@@ -86,13 +90,16 @@ def _extract_date(text: str) -> Optional[datetime]:
 
 
 def _extract_total(text: str) -> Optional[float]:
+    candidates = []
     for m in TOTAL_LABELS.finditer(text):
         label = m.group(0).lower()
         if "subtotal" in label:
             continue
         amt = _parse_amount(m.group(1))
         if amt is not None and amt > 0:
-            return amt
+            candidates.append(amt)
+    if candidates:
+        return candidates[-1]
     amounts = MONEY.findall(text)
     if amounts:
         parsed = [_parse_amount(a) for a in amounts if _parse_amount(a)]
@@ -113,7 +120,12 @@ def _extract_vendor(text: str) -> str:
     for i, line in enumerate(lines[:8]):
         if len(line) > 3 and len(line) < 80:
             if not re.match(r"^\d", line) and not re.match(r"^(total|subtotal|date|gst|pst|hst)", line, re.I):
-                return line
+                raw = line
+                if "CANADA" in raw.upper() and ("Po" in raw or "tage" in raw or "PETRO" in raw.upper() or "PETR" in raw.upper()):
+                    return "PETRO-CANADA"
+                if "PETRO" in raw.upper() and "CANADA" in raw.upper():
+                    return "PETRO-CANADA"
+                return raw
     return "Unknown"
 
 
@@ -137,6 +149,14 @@ def extract_receipt_data(image_bytes: bytes, mime_type: str) -> dict:
     gst = _extract_tax(text, GST_PATTERN)
     pst = _extract_tax(text, PST_PATTERN)
     hst = _extract_tax(text, HST_PATTERN)
+    # Sanity: tax must not exceed total; if it does, treat as OCR error and drop it
+    if total is not None:
+        if gst is not None and gst > total:
+            gst = None
+        if pst is not None and pst > total:
+            pst = None
+        if hst is not None and hst > total:
+            hst = None
     subtotal = None
     if total is not None and (gst is not None or pst is not None or hst is not None):
         tax_sum = (gst or 0) + (pst or 0) + (hst or 0)

@@ -7,17 +7,26 @@ export default function AccountDetail() {
   const [account, setAccount] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [unauthorized, setUnauthorized] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([accountsApi.get(id), expensesApi.list(Number(id))]).then(([acc, exps]) => {
-      setAccount(acc.unauthorized ? null : acc);
-      setExpenses(exps.unauthorized ? [] : exps);
-      setLoading(false);
-    });
+    setUnauthorized(false);
+    Promise.all([accountsApi.get(id), expensesApi.list(Number(id))])
+      .then(([acc, exps]) => {
+        setUnauthorized(Boolean(acc.unauthorized));
+        setAccount(acc.unauthorized ? null : acc);
+        setExpenses(exps.unauthorized ? [] : exps);
+      })
+      .catch(() => {
+        setAccount(null);
+        setUnauthorized(false);
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <p>Loading…</p>;
+  if (unauthorized) return <p>Not authenticated. Please log in again. <Link to="/login">Log in</Link></p>;
   if (!account) return <p>Account not found. <Link to="/">Dashboard</Link></p>;
 
   return (

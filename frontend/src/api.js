@@ -95,11 +95,17 @@ export const expenses = {
     }
     return res.json();
   },
-  async fromReceipt(file, accountId, category) {
+  async fromReceipt(file, accountId, category, overrides = {}) {
     const form = new FormData();
     form.append("file", file);
     form.append("account_id", String(accountId));
     if (category) form.append("category", category);
+    if (overrides.vendor != null && overrides.vendor !== "") form.append("vendor", String(overrides.vendor));
+    if (overrides.date != null && overrides.date !== "") form.append("date", String(overrides.date));
+    if (overrides.amount != null && overrides.amount !== "") form.append("amount", String(overrides.amount));
+    if (overrides.amount_subtotal != null && overrides.amount_subtotal !== "") form.append("amount_subtotal", String(overrides.amount_subtotal));
+    if (overrides.tax_gst != null && overrides.tax_gst !== "") form.append("tax_gst", String(overrides.tax_gst));
+    if (overrides.tax_pst != null && overrides.tax_pst !== "") form.append("tax_pst", String(overrides.tax_pst));
     const res = await fetch(`${API}/expenses/from-receipt`, {
       method: "POST",
       credentials: "include",

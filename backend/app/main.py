@@ -21,7 +21,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    path="/",
+    same_site="lax",
+    https_only=settings.session_cookie_secure,
+)
 
 app.include_router(auth.router)
 app.include_router(accounts.router)

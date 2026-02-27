@@ -33,7 +33,10 @@ backend/data/
 data/
 *.receipts/
 
-# Test / coverage
+# Test receipt images (keep folder + README, ignore dropped files)
+test_receipts/*
+!test_receipts/README.md
+
 .coverage
 htmlcov/
 .pytest_cache/
