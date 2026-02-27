@@ -5,7 +5,7 @@ import { CRA_RENTAL_CATEGORIES } from "../craCategories";
 
 function formatDateForInput(date) {
   if (!date) return "";
-  const s = typeof date === "string" ? date : date.slice?.(0, 10) : "";
+  const s = typeof date === "string" ? date : (date && date.slice ? date.slice(0, 10) : "");
   return s.slice(0, 10) || "";
 }
 

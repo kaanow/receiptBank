@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { useAuth } from "../useAuth";
 import { accounts as accountsApi, expenses as expensesApi } from "../api";
 
 export default function Dashboard() {
