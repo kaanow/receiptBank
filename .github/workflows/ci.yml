@@ -59,3 +59,25 @@ jobs:
 
       - name: Test
         run: npm run test
+
+  smoke:
+    name: Post-deploy smoke test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+    steps:
+      - name: Wait for Railway deploy
+        run: sleep 90
+
+      - name: Check production health
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -sf -o /dev/null -w "%{http_code}" https://r.alti2.de/health | grep -q 200; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 30s..."
+            sleep 30
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
