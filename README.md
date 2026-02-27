@@ -5,7 +5,7 @@ Mobile-friendly expense and receipt tracker: upload receipt images/PDFs, auto-ex
 ## Setup
 
 - **Backend**: `cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
-- **Frontend**: `cd frontend && npm install`
+- **Frontend**: `cd frontend && npm install` (run once to generate `package-lock.json`, then commit it for CI).
 - **Database**: Postgres; set `DATABASE_URL`. Run migrations: `cd backend && alembic upgrade head`
 - **Env**: Copy `backend/.env.example` to `backend/.env` and set secrets.
 
