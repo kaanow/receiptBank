@@ -6,9 +6,10 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import globals from "globals";
 
 export default [
+  { ignores: ["node_modules/", "dist/"] },
   js.configs.recommended,
   {
-    files: ["**/*.{js,jsx}"],
+    files: ["src/**/*.{js,jsx}"],
     languageOptions: {
       parser: babelParser,
       ecmaVersion: 2022,
@@ -17,6 +18,7 @@ export default [
         ecmaVersion: "latest",
         ecmaFeatures: { jsx: true },
         sourceType: "module",
+        requireConfigFile: false,
         babelOptions: { presets: ["@babel/preset-react"] },
       },
     },
@@ -33,6 +35,7 @@ export default [
         { allowConstantExport: true },
       ],
       "react/prop-types": "off",
+      "react/react-in-jsx-scope": "off",
     },
     settings: { react: { version: "18.2" } },
   },
