@@ -1,5 +1,4 @@
 # CI: run tests on push to main and on pull requests targeting main.
-# Backend and frontend jobs run only when their code exists (so initial push stays green).
 
 name: CI
 
@@ -13,7 +12,6 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
-    if: hashFiles('backend/**') != ''
     defaults:
       run:
         working-directory: backend
@@ -38,7 +36,6 @@ jobs:
   frontend:
     name: Frontend (lint & test)
     runs-on: ubuntu-latest
-    if: hashFiles('frontend/**') != ''
     defaults:
       run:
         working-directory: frontend
