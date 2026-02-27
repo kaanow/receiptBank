@@ -9,6 +9,10 @@ function formatDateForInput(date) {
   return s.slice(0, 10) || "";
 }
 
+function isImageFile(file) {
+  return file && file.type && file.type.startsWith("image/");
+}
+
 export default function UploadReceipt() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState([]);
@@ -16,6 +20,7 @@ export default function UploadReceipt() {
   const [category, setCategory] = useState("");
   const [categoryOther, setCategoryOther] = useState("");
   const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [extracted, setExtracted] = useState(null);
   const [vendor, setVendor] = useState("");
   const [amount, setAmount] = useState("");
@@ -25,6 +30,7 @@ export default function UploadReceipt() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
+  const previewUrlRef = useRef(null);
 
   const selectedAccount = accounts.find((a) => String(a.id) === String(accountId));
   const isRental = selectedAccount?.type === "rental";
@@ -34,6 +40,30 @@ export default function UploadReceipt() {
       if (!accs.unauthorized) setAccounts(accs);
     });
   }, []);
+
+  useEffect(() => {
+    if (!file) {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+      setPreviewUrl(null);
+      return;
+    }
+    if (isImageFile(file)) {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      const url = URL.createObjectURL(file);
+      previewUrlRef.current = url;
+      setPreviewUrl(url);
+      return () => {
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
+        }
+      };
+    }
+    setPreviewUrl(null);
+  }, [file]);
 
   useEffect(() => {
     if (!extracted) return;
@@ -111,6 +141,15 @@ export default function UploadReceipt() {
           Receipt (image or PDF)
           <input ref={fileInputRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} />
         </label>
+        {file && (
+          <div className="receipt-preview" aria-label="Receipt preview">
+            {previewUrl ? (
+              <img src={previewUrl} alt="Receipt" className="receipt-preview__img" />
+            ) : (
+              <p className="receipt-preview__pdf">PDF: {file.name}</p>
+            )}
+          </div>
+        )}
         {loading && !extracted && <p>Extracting data…</p>}
         {extracted && (
           <div className="extracted-fields">
