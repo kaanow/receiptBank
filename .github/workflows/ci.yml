@@ -17,6 +17,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      DATABASE_URL: postgresql://localhost/test
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +42,8 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      CI: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -51,8 +55,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+        run: npm ci
 
       - name: Lint
         run: npm run lint
