@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
+from app.routers import accounts, auth, expenses
 
 app = FastAPI(
     title="ReceiptBank API",
@@ -16,6 +18,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
+
+app.include_router(auth.router)
+app.include_router(accounts.router)
+app.include_router(expenses.router)
 
 
 @app.get("/health")
