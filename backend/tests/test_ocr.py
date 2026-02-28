@@ -70,3 +70,27 @@ TOTAL $77.17"""
         assert data["tax_pst"] is None
     finally:
         ocr._image_to_text = old_fn
+
+
+def test_extract_bc_ferries_langdale():
+    """BC Ferries Langdale/Horseshoe Bay: vendor BC Ferries, Total Prepaid 20.00."""
+    text = """Langdale
+Horseshoe Bay
+vite 566 L321] Blanshard Street
+Victoria er Canada VBW OR7
+RECEIPT - PLEASE RETAIN
+PURCHASE 2026/01/01
+1 Reservation fee 20.00
+Total Prepaid 20.00
+Total Changes > 0.00
+01 Jan 2026 08:27:49"""
+    from app import ocr
+    old_fn = ocr._image_to_text
+    try:
+        ocr._image_to_text = lambda b, m: text
+        data = extract_receipt_data(b"fake", "image/jpeg")
+        assert data["vendor"] == "BC Ferries"
+        assert data["date"] is not None and str(data["date"])[:10] == "2026-01-01"
+        assert data["amount"] == 20.0
+    finally:
+        ocr._image_to_text = old_fn

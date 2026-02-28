@@ -1,6 +1,7 @@
 """
 Extract structured data from receipt image/PDF text using regex and heuristics.
 Uses pytesseract for OCR; callers pass in raw image bytes or PDF bytes.
+HEIC: requires pillow-heif; on Linux, libheif libraries may be needed for decode.
 """
 import io
 import re
@@ -64,6 +65,11 @@ TOTAL_LABELS = re.compile(
     r"(?:total|amount\s+due|balance\s+due|grand\s+total|subtotal|sum)\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)",
     re.I,
 )
+# Total Prepaid / Reservation fee (BC Ferries etc.)
+TOTAL_PREPAID_PATTERN = re.compile(
+    r"(?:total\s+prepaid|reservation\s+fee)\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2}|\d+\.\d{2})",
+    re.I,
+)
 GST_PATTERN = re.compile(r"G\.?S\.?T\.?\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
 GST_INCLUDED_PATTERN = re.compile(r"GST\s+INCLUDED\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
 PST_PATTERN = re.compile(r"P\.?S\.?T\.?\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
@@ -123,6 +129,10 @@ def _extract_total(text: str) -> Optional[float]:
         amt = _parse_amount(m.group(1))
         if amt is not None and amt > 0:
             candidates.append(amt)
+    for m in TOTAL_PREPAID_PATTERN.finditer(filtered_text):
+        amt = _parse_amount(m.group(1))
+        if amt is not None and amt > 0:
+            candidates.append(amt)
     if candidates:
         preferred = [a for a in candidates if a < 1000]
         return (preferred[-1] if preferred else candidates[-1])
@@ -151,6 +161,8 @@ def _extract_tax(text: str, pattern: re.Pattern, max_reasonable: Optional[float]
 def _extract_vendor(text: str) -> str:
     text_lower = text.lower()
     if "ferries" in text_lower or "bcf " in text_lower or "ene bay" in text_lower or "bc ferries" in text_lower:
+        return "BC Ferries"
+    if "langdale" in text_lower and ("horseshoe" in text_lower or "bay" in text_lower):
         return "BC Ferries"
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     for i, line in enumerate(lines[:8]):
