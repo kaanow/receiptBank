@@ -113,3 +113,4 @@ class ExtractResponse(BaseModel):
     tax_gst: Optional[float] = None
     tax_pst: Optional[float] = None
     vendor: str = "Unknown"
+    preview_data_url: Optional[str] = None  # PNG data URL for HEIC preview when browser can't display HEIC

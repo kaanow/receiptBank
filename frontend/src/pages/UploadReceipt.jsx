@@ -143,7 +143,9 @@ export default function UploadReceipt() {
         </label>
         {file && (
           <div className="receipt-preview" aria-label="Receipt preview">
-            {previewUrl ? (
+            {extracted?.preview_data_url ? (
+              <img src={extracted.preview_data_url} alt="Receipt" className="receipt-preview__img" />
+            ) : previewUrl ? (
               <img src={previewUrl} alt="Receipt" className="receipt-preview__img" />
             ) : (
               <p className="receipt-preview__pdf">PDF: {file.name}</p>

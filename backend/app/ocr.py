@@ -36,6 +36,22 @@ def _is_heic_bytes(content: bytes) -> bool:
     return content[4:8] == b"ftyp" and content[8:12] in (b"heic", b"mif1", b"heix", b"hevx", b"msf1")
 
 
+def heic_to_png_data_url(image_bytes: bytes) -> Optional[str]:
+    """Return a data URL for PNG preview of HEIC (for browsers that can't display HEIC). None if not HEIC or decode fails."""
+    import base64
+    if not HAS_HEIF or not _is_heic_bytes(image_bytes):
+        return None
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        if img.mode not in ("L", "RGB"):
+            img = img.convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return "data:image/png;base64," + base64.standard_b64encode(buf.getvalue()).decode("ascii")
+    except Exception:
+        return None
+
+
 def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
     if not HAS_OCR:
         return ""

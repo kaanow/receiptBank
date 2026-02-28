@@ -57,6 +57,9 @@ async def extract_receipt(
                 detail=str(e),
             ) from e
         raise
+    if content_type == "image/heic":
+        from app.ocr import heic_to_png_data_url
+        data["preview_data_url"] = heic_to_png_data_url(content)
     return ExtractResponse(**data)
 
 
