@@ -31,15 +31,29 @@ base_url = os.environ.get("RECEIPTBANK_BASE_URL", "https://r.alti2.de").rstrip("
 ocr_dir.mkdir(parents=True, exist_ok=True)
 
 
+def _mime_for(path: Path) -> str:
+    s = path.suffix.lower()
+    if s in (".jpg", ".jpeg"):
+        return "image/jpeg"
+    if s == ".png":
+        return "image/png"
+    if s == ".heic":
+        return "image/heic"
+    if s == ".pdf":
+        return "application/pdf"
+    return "application/octet-stream"
+
+
 def process(path: Path, client: httpx.Client) -> None:
     name = path.name
     out_path = ocr_dir / f"{name}.json"
     try:
         with open(path, "rb") as f:
             content = f.read()
+        mime = _mime_for(path)
         r = client.post(
-            f"{base_url}/api/expenses/extract-test",
-            files={"file": (name, content, "application/octet-stream")},
+            f"{base_url}/expenses/extract-test",
+            files={"file": (name, content, mime)},
         )
         if r.status_code >= 400:
             try:
