@@ -53,8 +53,19 @@ def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
         img = Image.open(io.BytesIO(image_bytes))
         if img.mode not in ("L", "RGB"):
             img = img.convert("RGB")
+        # Pytesseract only supports PNG, JPEG, etc.; HEIC opener yields HeifImageFile with unsupported format
+        if getattr(img, "format", None) and str(img.format).upper() not in ("PNG", "JPEG", "JPG", "GIF", "BMP", "TIFF", "PBM"):
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+            img = Image.open(buf)
         return pytesseract.image_to_string(img)
-    except Exception:
+    except Exception as e:
+        if mime_type == "image/heic":
+            # Only surface as HEIC decode failure if the error is from open/save, not from tesseract
+            from pytesseract import TesseractNotFoundError
+            if not isinstance(e, TesseractNotFoundError) and "tesseract" not in str(e).lower():
+                raise RuntimeError(f"HEIC decode failed: {e}") from e
         return ""
 
 

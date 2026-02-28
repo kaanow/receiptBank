@@ -48,7 +48,15 @@ async def extract_receipt(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="HEIC decoding is not available on this server (missing libheif).",
         )
-    data = extract_receipt_data(content, content_type)
+    try:
+        data = extract_receipt_data(content, content_type)
+    except RuntimeError as e:
+        if "HEIC decode failed" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(e),
+            ) from e
+        raise
     return ExtractResponse(**data)
 
 
@@ -71,7 +79,15 @@ async def extract_receipt_raw_text(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="HEIC decoding is not available on this server (missing libheif).",
         )
-    raw_text = _image_to_text(content, content_type)
+    try:
+        raw_text = _image_to_text(content, content_type)
+    except RuntimeError as e:
+        if "HEIC decode failed" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(e),
+            ) from e
+        raise
     return {"raw_text": raw_text}
 
 
@@ -108,7 +124,15 @@ async def create_expense_from_receipt(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="HEIC decoding is not available on this server (missing libheif).",
         )
-    data = extract_receipt_data(content, content_type)
+    try:
+        data = extract_receipt_data(content, content_type)
+    except RuntimeError as e:
+        if "HEIC decode failed" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(e),
+            ) from e
+        raise
     from datetime import datetime as dt
     def _opt(s):
         return (s or "").strip() or None

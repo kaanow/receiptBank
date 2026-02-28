@@ -40,6 +40,13 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/health/heic")
+def health_heic():
+    """Public diagnostic: whether HEIC decode is available (for debugging live deploy)."""
+    from app.ocr import HAS_HEIF
+    return {"has_heif": HAS_HEIF, "message": "HEIC decode available" if HAS_HEIF else "HEIC not available (install libheif)"}
+
+
 @app.get("/")
 def root():
     return {"service": "ReceiptBank API", "docs": "/docs"}
