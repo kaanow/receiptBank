@@ -58,14 +58,10 @@ DATE_PATTERNS = [
     re.compile(r"\b(0?[1-9]|[12]\d|3[01])[-/](0?[1-9]|1[0-2])[-/](\d{2})\b"),
     re.compile(r"\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b"),
 ]
-MONEY = re.compile(r"\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)\s*\$?")
+MONEY_DECIMAL = re.compile(r"\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2}|\d+\.\d{2})\b")
+MONEY_DOLLAR_INT = re.compile(r"\$\s*(\d{1,3}(?:,\d{3})*|\d+)\b")
 TOTAL_LABELS = re.compile(
     r"(?:total|amount\s+due|balance\s+due|grand\s+total|subtotal|sum)\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)",
-    re.I,
-)
-# Balance/Total line with $ amount (e.g. "Balance:$98.1") to prefer over address numbers
-BALANCE_TOTAL_LINE = re.compile(
-    r"(?:balance|total)\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2}|\d+\.\d{1,2})",
     re.I,
 )
 GST_PATTERN = re.compile(r"G\.?S\.?T\.?\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
@@ -111,27 +107,35 @@ def _extract_date(text: str) -> Optional[datetime]:
 
 
 def _extract_total(text: str) -> Optional[float]:
+    # Remove balance/prepaid-card lines so we don't treat remaining balance as the expense total.
+    filtered_lines = []
+    for ln in text.splitlines():
+        if re.search(r"\bbalance\b", ln, re.I):
+            continue
+        filtered_lines.append(ln)
+    filtered_text = "\n".join(filtered_lines)
+
     candidates = []
-    for m in TOTAL_LABELS.finditer(text):
+    for m in TOTAL_LABELS.finditer(filtered_text):
         label = m.group(0).lower()
-        if "subtotal" in label:
+        if "subtotal" in label or "balance" in label:
             continue
         amt = _parse_amount(m.group(1))
         if amt is not None and amt > 0:
             candidates.append(amt)
-    for m in BALANCE_TOTAL_LINE.finditer(text):
-        amt = _parse_amount(m.group(1))
-        if amt is not None and amt > 0 and amt < 10000:
-            candidates.append(amt)
     if candidates:
         preferred = [a for a in candidates if a < 1000]
         return (preferred[-1] if preferred else candidates[-1])
-    amounts = MONEY.findall(text)
-    if amounts:
-        parsed = [_parse_amount(a) for a in amounts if _parse_amount(a)]
-        if parsed:
-            under_1k = [a for a in parsed if 0 < a < 1000]
-            return max(under_1k) if under_1k else max(parsed)
+    amounts = MONEY_DECIMAL.findall(filtered_text)
+    parsed = [_parse_amount(a) for a in amounts if _parse_amount(a)]
+    if parsed:
+        under_1k = [a for a in parsed if 0 < a < 1000]
+        return max(under_1k) if under_1k else max(parsed)
+    amounts_int = MONEY_DOLLAR_INT.findall(filtered_text)
+    parsed_int = [_parse_amount(a) for a in amounts_int if _parse_amount(a)]
+    if parsed_int:
+        under_1k = [a for a in parsed_int if 0 < a < 1000]
+        return max(under_1k) if under_1k else max(parsed_int)
     return None
 
 

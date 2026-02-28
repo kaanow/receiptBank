@@ -28,7 +28,7 @@ def test_extract_pst_sanity_over_total():
 
 
 def test_extract_bc_ferries_balance():
-    """BC Ferries: vendor from 'ene Bay', amount from Balance $98.1 not address 506."""
+    """BC Ferries: vendor recognized; avoid using address numbers or prepaid card balance as expense total."""
     text = """bes ene Bay
 atte orri
 ite 506 - 1321 Blanshard Street
@@ -43,7 +43,7 @@ Balance:$98.1
         data = extract_receipt_data(b"fake", "image/jpeg")
         assert data["vendor"] == "BC Ferries"
         assert data["date"] is not None and str(data["date"])[:10] == "2026-02-19"
-        assert data["amount"] == 98.1
+        assert data["amount"] is None
     finally:
         ocr._image_to_text = old_fn
 
