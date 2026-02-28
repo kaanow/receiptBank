@@ -1,6 +1,7 @@
 #!/bin/sh
-# Run OCR + extract on test_receipts using the same pipeline as the web app (HEIC→PNG then tesseract).
-# Requires Docker. From repo root: ./backend/scripts/run_ocr_receipts_docker.sh
+# Optional / deprecated for testing: run OCR on test_receipts inside Docker (HEIC→PNG then tesseract).
+# Receipt testing uses the live site: fetch_ocr_from_web_tool.py → analyze_test_receipts.py (see docs/TESTING.md).
+# From repo root: ./backend/scripts/run_ocr_receipts_docker.sh
 set -e
 echo "Building image (has tesseract + libheif)..."
 docker build -t receiptbank:ocr .

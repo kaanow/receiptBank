@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Run the same pipeline as the web app on receipt images: HEIC→PNG then OCR + extract.
+Optional / deprecated for testing: run OCR pipeline on receipt images (HEIC→PNG then OCR + extract).
+Receipt testing uses the live site: fetch_ocr_from_web_tool.py → analyze_test_receipts.py (see docs/TESTING.md).
+This script is only for environments where you have tesseract and want to run the same pipeline offline.
 Usage: from repo root, python backend/scripts/run_ocr_on_receipts.py [path_or_dir]
-  If no path given, runs on all images in test_receipts/.
-  Requires tesseract installed (e.g. brew install tesseract) or run inside app Docker image.
 """
 import io
 import sys

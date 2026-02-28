@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Compare test receipt parser output to expected.json. Prefers actual results from our
-web tool: if test_receipts/ocr/<filename>.json exists (from fetch_ocr_from_web_tool.py),
-use that; otherwise run OCR locally. Writes test_receipts/ANALYSIS.md.
-Usage: from repo root, python backend/scripts/analyze_test_receipts.py [--save-ocr]
-  --save-ocr  When running local OCR, also write raw text to test_receipts/ocr/<stem>.txt
-Exit: 0 if all files with expectations match; 1 if any mismatch.
+Compare test receipt parser output to expected.json using only results from the
+live-site web tool (test_receipts/ocr/*.json from fetch_ocr_from_web_tool.py).
+No local OCR. Writes test_receipts/ANALYSIS.md.
+See docs/TESTING.md for the full plan.
+Usage: from repo root, python backend/scripts/analyze_test_receipts.py
+Exit: 0 if all files with expectations have ocr/*.json and match; 1 otherwise.
 """
 import json
 import sys
@@ -13,10 +13,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 backend = Path(__file__).resolve().parent.parent
-if str(backend) not in sys.path:
-    sys.path.insert(0, str(backend))
-
-from app.ocr import _image_to_text, extract_receipt_data, heic_to_png_bytes
+repo_root = backend.parent
 
 
 def normalize_parsed(data: dict) -> dict:
@@ -44,7 +41,7 @@ def load_expected(repo_root: Path) -> dict:
 
 
 def load_web_tool_result(ocr_dir: Path, filename: str) -> Optional[Tuple[str, dict]]:
-    """If ocr/<filename>.json exists (from our debug endpoint), return (raw_text, parsed)."""
+    """If ocr/<filename>.json exists (from live-site debug endpoint), return (raw_text, parsed)."""
     j = ocr_dir / f"{filename}.json"
     if not j.is_file():
         return None
@@ -57,32 +54,7 @@ def load_web_tool_result(ocr_dir: Path, filename: str) -> Optional[Tuple[str, di
     return raw, normalize_parsed(parsed)
 
 
-def run_one_local(path: Path, repo_root: Path, save_ocr: bool) -> Tuple[str, str, dict, Optional[str]]:
-    """Run pipeline locally; return (name, raw_text, parsed, error)."""
-    raw = path.read_bytes()
-    if path.suffix.lower() == ".heic":
-        png = heic_to_png_bytes(raw)
-        if not png:
-            return path.name, "", {}, "HEIC decode failed"
-        content, mime = png, "image/png"
-    else:
-        mime = "image/jpeg" if path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
-        content = raw
-
-    text = _image_to_text(content, mime)
-    data = extract_receipt_data(content, mime)
-    parsed = normalize_parsed(data)
-
-    if save_ocr:
-        ocr_dir = repo_root / "test_receipts" / "ocr"
-        ocr_dir.mkdir(exist_ok=True)
-        (ocr_dir / f"{path.stem}.txt").write_text(text, encoding="utf-8")
-
-    return path.name, text, parsed, None
-
-
 def main():
-    save_ocr = "--save-ocr" in sys.argv
     repo_root = backend.parent
     test_dir = repo_root / "test_receipts"
     ocr_dir = test_dir / "ocr"
@@ -102,25 +74,24 @@ def main():
     all_ok = True
     for path in paths:
         name = path.name
-        exp = expected.get(name)
         if name.startswith("_"):
             continue
+        exp = expected.get(name)
         web = load_web_tool_result(ocr_dir, name)
-        if web:
-            raw_text, parsed = web
-            source = "web tool"
-        else:
-            name_out, raw_text, parsed, err = run_one_local(path, repo_root, save_ocr)
-            if err:
-                print(f"  {name}: ERROR {err}")
-                if exp is not None:
-                    all_ok = False
-                rows.append((name, raw_text[:300], parsed, exp, False, err))
-                continue
-            source = "local OCR"
+        if not web:
+            raw_text, parsed = "", {}
+            if exp is not None:
+                print(f"  {name}: SKIP (fetch from live site first)  expected={exp}")
+                all_ok = False
+                rows.append((name, "(no ocr/*.json — run fetch_ocr_from_web_tool.py)", parsed, exp, False, "fetch first"))
+            else:
+                print(f"  {name}: (no expected, no data)")
+                rows.append((name, "", parsed, exp, True, None))
+            continue
 
+        raw_text, parsed = web
         if exp is None:
-            print(f"  {name}: ({source}) (no expected) {parsed}")
+            print(f"  {name}: (no expected) {parsed}")
             rows.append((name, raw_text[:300], parsed, exp, True, None))
             continue
 
@@ -136,22 +107,17 @@ def main():
                 ok = False
         if not ok:
             all_ok = False
-        print(f"  {name}: {'OK' if ok else 'FAIL'}  ({source})  expected={exp}  got={parsed}")
+        print(f"  {name}: {'OK' if ok else 'FAIL'}  expected={exp}  got={parsed}")
         rows.append((name, raw_text[:300], parsed, exp, ok, None))
 
-    if save_ocr:
-        print("(OCR saved to test_receipts/ocr/)")
-
-    # Write ANALYSIS.md
     analysis_path = repo_root / "test_receipts" / "ANALYSIS.md"
     lines = [
         "# Test receipt analysis",
         "",
-        "Actual parser output comes from **our web tool** (Debug OCR page or `POST /debug/ocr-probe`).",
-        "Run `DEBUG_OCR_SECRET=... python backend/scripts/fetch_ocr_from_web_tool.py` with the backend up to refresh `ocr/*.json`, then run this script.",
+        "Results from the **live site** (https://r.alti2.de). No local backend. See **docs/TESTING.md** for the plan and task checklist.",
         "",
-        "| File | Raw OCR (excerpt) | Parsed (from web tool) | Expected | Match |",
-        "|------|-------------------|------------------------|----------|-------|",
+        "| File | Raw OCR (excerpt) | Parsed | Expected | Match |",
+        "|------|-------------------|--------|----------|-------|",
     ]
     for name, raw_excerpt, parsed, exp, match, err in rows:
         raw_display = (raw_excerpt or "(empty)").replace("|", "\\|").replace("\n", " ")

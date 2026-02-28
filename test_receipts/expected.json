@@ -1,5 +1,5 @@
 {
-  "_comment": "Expected parsed fields per test receipt for regression. Run backend/scripts/run_ocr_on_receipts.py or run_ocr_receipts_docker.sh, then compare to this. Date as YYYY-MM-DD, amounts as numbers, null if not expected.",
+  "_comment": "Expected parsed fields per test receipt. Fetch from live site first (docs/TESTING.md), then compare. Date as YYYY-MM-DD, amounts as numbers, null if not expected.",
   "Ferry.HEIC": {
     "vendor": "BC Ferries",
     "date": "2026-01-01",

@@ -9,10 +9,12 @@ Mobile-friendly expense and receipt tracker: upload receipt images/PDFs, auto-ex
 - **Database**: Postgres; set `DATABASE_URL`. Run migrations: `cd backend && alembic upgrade head`
 - **Env**: Copy `backend/.env.example` to `backend/.env` and set secrets.
 
-## Run locally
+## Run locally (development)
 
 - Backend: `cd backend && uvicorn app.main:app --reload`
 - Frontend: `cd frontend && npm run dev`
+
+**Receipt testing** does not use a local backend. It runs against the live site. See **docs/TESTING.md** for the plan and task checklist.
 
 ## CI
 

@@ -1,0 +1,15 @@
+---
+description: Use task lists for multi-step work
+alwaysApply: true
+---
+
+# Multi-step work: use task lists
+
+When a task has **multiple steps** (e.g. receipt testing, refactors, feature work):
+
+1. **Create a todo list** at the start (TodoWrite with merge: false). Break the work into clear, ordered steps.
+2. **Update progress** as you go: set status to in_progress when starting a step, completed when done.
+3. **Resume from the list** after a context-window transition: read the todo list and docs (e.g. docs/TESTING.md) to see where we left off and what’s next.
+4. **Don’t skip the list** for tasks with 3+ steps or when the user describes a sequence. It keeps work on track and makes handoff clear.
+
+Project-specific checklists live in docs (e.g. **docs/TESTING.md** task checklist). Use those plus the in-chat todo list.
