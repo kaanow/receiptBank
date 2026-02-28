@@ -35,7 +35,7 @@ async def extract_receipt(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    from app.ocr import extract_receipt_data, HAS_HEIF
+    from app.ocr import extract_receipt_data, HAS_HEIF, heic_to_png_bytes, png_to_data_url
     content_type = file.content_type or "application/octet-stream"
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
@@ -48,6 +48,18 @@ async def extract_receipt(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="HEIC decoding is not available on this server (missing libheif).",
         )
+    # Convert HEIC to PNG once; use PNG for OCR and preview (brief HEIC use only)
+    did_heic_convert = False
+    if content_type == "image/heic":
+        png_bytes = heic_to_png_bytes(content)
+        if not png_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="HEIC decode failed",
+            )
+        content = png_bytes
+        content_type = "image/png"
+        did_heic_convert = True
     try:
         data = extract_receipt_data(content, content_type)
     except RuntimeError as e:
@@ -57,9 +69,8 @@ async def extract_receipt(
                 detail=str(e),
             ) from e
         raise
-    if content_type == "image/heic":
-        from app.ocr import heic_to_png_data_url
-        data["preview_data_url"] = heic_to_png_data_url(content)
+    if did_heic_convert:
+        data["preview_data_url"] = png_to_data_url(content)
     return ExtractResponse(**data)
 
 
@@ -109,7 +120,7 @@ async def create_expense_from_receipt(
     db: Session = Depends(get_db),
 ):
     from app.accounts_helpers import get_allowed_account_ids
-    from app.ocr import extract_receipt_data, HAS_HEIF
+    from app.ocr import extract_receipt_data, HAS_HEIF, heic_to_png_bytes
     if not user_can_access_account(db, current_user.id, account_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
     account = db.query(Account).filter(Account.id == account_id).first()
@@ -127,6 +138,15 @@ async def create_expense_from_receipt(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="HEIC decoding is not available on this server (missing libheif).",
         )
+    store_filename = file.filename or "file"
+    if content_type == "image/heic":
+        from pathlib import Path
+        png_bytes = heic_to_png_bytes(content)
+        if not png_bytes:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="HEIC decode failed")
+        content = png_bytes
+        content_type = "image/png"
+        store_filename = Path(store_filename).stem + ".png"
     try:
         data = extract_receipt_data(content, content_type)
     except RuntimeError as e:
@@ -174,7 +194,7 @@ async def create_expense_from_receipt(
     db.commit()
     db.refresh(expense)
     existing_count = 0
-    full_path, stored_relative = receipt_stored_path(expense, account, existing_count, file.filename or "file")
+    full_path, stored_relative = receipt_stored_path(expense, account, existing_count, store_filename)
     full_path.write_bytes(content)
     receipt = Receipt(
         expense_id=expense.id,
@@ -331,6 +351,8 @@ async def upload_receipt(
     db: Session = Depends(get_db),
 ):
     from app.accounts_helpers import get_allowed_account_ids
+    from app.ocr import HAS_HEIF, heic_to_png_bytes
+    from pathlib import Path
     expense = db.query(Expense).filter(Expense.id == expense_id).first()
     if not expense:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found")
@@ -341,16 +363,30 @@ async def upload_receipt(
     if not account:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
     content_type = file.content_type or "application/octet-stream"
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    content_type = _normalize_receipt_content_type(content_type, content, file.filename)
     if content_type not in ALLOWED_MIME:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"File type not allowed. Allowed: {', '.join(ALLOWED_MIME)}",
         )
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    if content_type == "image/heic" and not HAS_HEIF:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="HEIC decoding is not available on this server (missing libheif).",
+        )
+    store_filename = file.filename or "file"
+    if content_type == "image/heic":
+        png_bytes = heic_to_png_bytes(content)
+        if not png_bytes:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="HEIC decode failed")
+        content = png_bytes
+        content_type = "image/png"
+        store_filename = Path(store_filename).stem + ".png"
     existing_count = db.query(Receipt).filter(Receipt.expense_id == expense_id).count()
-    full_path, stored_relative = receipt_stored_path(expense, account, existing_count, file.filename or "file")
+    full_path, stored_relative = receipt_stored_path(expense, account, existing_count, store_filename)
     full_path.write_bytes(content)
     receipt = Receipt(
         expense_id=expense_id,

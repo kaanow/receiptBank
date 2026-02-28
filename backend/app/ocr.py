@@ -36,9 +36,8 @@ def _is_heic_bytes(content: bytes) -> bool:
     return content[4:8] == b"ftyp" and content[8:12] in (b"heic", b"mif1", b"heix", b"hevx", b"msf1")
 
 
-def heic_to_png_data_url(image_bytes: bytes) -> Optional[str]:
-    """Return a data URL for PNG preview of HEIC (for browsers that can't display HEIC). None if not HEIC or decode fails."""
-    import base64
+def heic_to_png_bytes(image_bytes: bytes) -> Optional[bytes]:
+    """Convert HEIC to PNG bytes. Use this once at ingestion; use PNG for OCR, preview, and storage. Returns None if not HEIC or decode fails."""
     if not HAS_HEIF or not _is_heic_bytes(image_bytes):
         return None
     try:
@@ -47,9 +46,22 @@ def heic_to_png_data_url(image_bytes: bytes) -> Optional[str]:
             img = img.convert("RGB")
         buf = io.BytesIO()
         img.save(buf, format="PNG")
-        return "data:image/png;base64," + base64.standard_b64encode(buf.getvalue()).decode("ascii")
+        return buf.getvalue()
     except Exception:
         return None
+
+
+def heic_to_png_data_url(image_bytes: bytes) -> Optional[str]:
+    """Return a data URL for PNG preview of HEIC. None if not HEIC or decode fails. Prefer heic_to_png_bytes + png_to_data_url when you already have PNG bytes."""
+    import base64
+    png = heic_to_png_bytes(image_bytes)
+    return png_to_data_url(png) if png else None
+
+
+def png_to_data_url(png_bytes: bytes) -> str:
+    """Build a data URL for PNG bytes (for preview in HTML)."""
+    import base64
+    return "data:image/png;base64," + base64.standard_b64encode(png_bytes).decode("ascii")
 
 
 def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
