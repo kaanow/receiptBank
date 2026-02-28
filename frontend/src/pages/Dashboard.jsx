@@ -28,6 +28,7 @@ export default function Dashboard() {
       <nav className="nav">
         <Link to="/upload">Upload receipt</Link>
         <Link to="/reports">Reports</Link>
+        <Link to="/debug-ocr">Debug OCR</Link>
       </nav>
       {loading ? (
         <p>Loading…</p>

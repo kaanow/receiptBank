@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import UploadReceipt from "./pages/UploadReceipt";
 import Reports from "./pages/Reports";
+import DebugOcr from "./pages/DebugOcr";
 import AccountDetail from "./pages/AccountDetail";
 import AccountNew from "./pages/AccountNew";
 
@@ -24,6 +25,7 @@ function AppRoutes() {
       <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/upload" element={<PrivateRoute><UploadReceipt /></PrivateRoute>} />
       <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+      <Route path="/debug-ocr" element={<PrivateRoute><DebugOcr /></PrivateRoute>} />
       <Route path="/accounts/new" element={<PrivateRoute><AccountNew /></PrivateRoute>} />
       <Route path="/accounts/:id" element={<PrivateRoute><AccountDetail /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />

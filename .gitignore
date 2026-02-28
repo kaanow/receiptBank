@@ -36,6 +36,7 @@ data/
 # Test receipt images (keep folder + README, ignore dropped files)
 test_receipts/*
 !test_receipts/README.md
+test_receipts/cropped/
 
 .coverage
 htmlcov/

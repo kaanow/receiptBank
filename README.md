@@ -21,3 +21,8 @@ GitHub Actions runs on push to `main`: backend tests (pytest) and frontend tests
 ## Project rules
 
 The `.cursor/` folder (including `.cursor/rules/`) is committed so that pulling the repo preserves rules and conventions; include it in commits when you change it.
+
+## Troubleshooting OCR
+
+- **Logged-in users**: Use **Debug OCR** (nav link) to upload a receipt and see raw OCR text plus parsed fields in one go. Same pipeline as the upload flow.
+- **Automation / assistants**: Set `DEBUG_OCR_SECRET` in the backend environment; then `POST /debug/ocr-probe` with header `X-Debug-Secret: <value>` and a file upload returns `{ "raw_text": "...", "parsed": { ... } }`. If `DEBUG_OCR_SECRET` is unset, the endpoint returns 404.

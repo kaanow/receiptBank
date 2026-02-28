@@ -103,7 +103,7 @@ def _crop_receipt_to_rect(pil_image: Image.Image) -> Optional[Image.Image]:
         blurred = cv2.GaussianBlur(gray, (5, 5), 1)
         edged = cv2.Canny(blurred, 50, 150)
         contours, _ = cv2.findContours(edged, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        area_thresh = (w * h) * 0.03  # at least 3% of image
+        area_thresh = (w * h) * 0.005  # at least 0.5% of image (was 3%; relaxed for full-frame receipts)
         best_quad = None
         best_area = 0
         for cnt in contours:
@@ -128,6 +128,18 @@ def _crop_receipt_to_rect(pil_image: Image.Image) -> Optional[Image.Image]:
             best_quad = approx
             best_area = rect_area
         if best_quad is None:
+            # No document contour found (common when receipt fills the frame). Fallback: margin crop
+            # to remove border noise and slightly normalize; helps OCR on full-frame receipts.
+            aspect = w / (h + 1e-6)
+            if 0.15 <= aspect <= 6.0 and w >= 100 and h >= 100:
+                margin_pct = 0.02
+                x1 = int(w * margin_pct)
+                y1 = int(h * margin_pct)
+                x2 = int(w * (1 - margin_pct))
+                y2 = int(h * (1 - margin_pct))
+                if x2 > x1 and y2 > y1:
+                    cropped = img_arr[y1:y2, x1:x2]
+                    return Image.fromarray(cropped)
             return None
         src_pts = _order_quad_points(best_quad)
         tw = max(

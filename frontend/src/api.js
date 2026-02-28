@@ -95,6 +95,20 @@ export const expenses = {
     }
     return res.json();
   },
+  async extractDebug(file) {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API}/expenses/extract-debug`, {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || res.statusText);
+    }
+    return res.json();
+  },
   async fromReceipt(file, accountId, category, overrides = {}) {
     const form = new FormData();
     form.append("file", file);
