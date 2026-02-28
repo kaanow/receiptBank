@@ -41,6 +41,14 @@ def process(path: Path, client: httpx.Client) -> None:
             f"{base_url}/api/expenses/extract-test",
             files={"file": (name, content, "application/octet-stream")},
         )
+        if r.status_code >= 400:
+            try:
+                err = r.json()
+                msg = err.get("detail", r.text) or r.text
+            except Exception:
+                msg = r.text or str(r.status_code)
+            print(f"  {name} FAIL: {r.status_code} {msg}", file=sys.stderr)
+            return
         r.raise_for_status()
         data = r.json()
         with open(out_path, "w") as f:
