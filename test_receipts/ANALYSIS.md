@@ -1,7 +1,6 @@
 # Test receipt analysis
 
-Actual parser output comes from **our web tool** (Debug OCR page or `POST /debug/ocr-probe`).
-Run `DEBUG_OCR_SECRET=... python backend/scripts/fetch_ocr_from_web_tool.py` with the backend up to refresh `ocr/*.json`, then run this script.
+Actual parser output comes from **our web tool on the live site** (Debug OCR page or `POST /debug/ocr-probe` at https://r.alti2.de). There is no local backend; run fetch against the live site.
 
 | File | Raw OCR (excerpt) | Parsed (from web tool) | Expected | Match |
 |------|-------------------|------------------------|----------|-------|

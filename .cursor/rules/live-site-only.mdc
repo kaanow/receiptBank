@@ -1,0 +1,12 @@
+---
+description: No local backend; run against live site
+alwaysApply: true
+---
+
+# Backend: use live site only
+
+**There is no backend configured on this machine.** Do not start uvicorn, assume localhost, or run tests/scripts against 127.0.0.1.
+
+- **API / debug / receipt tools:** Run against the **live site** only. Production URL: **https://r.alti2.de** (or the URL configured in CI/deploy).
+- Scripts that call the API (e.g. fetch_ocr_from_web_tool.py, health checks, receipt analysis) must default to or use the live base URL, not localhost.
+- Do not ask the user to "run the backend locally" or "start Docker." If you need API or OCR results, use the deployed site (and the secret/env the user has set there).

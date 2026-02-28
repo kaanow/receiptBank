@@ -2,7 +2,7 @@
 
 Drop receipt images or PDFs here for local OCR testing.
 
-**Actual OCR from our web tool:** With the backend running (and `DEBUG_OCR_SECRET` set), fetch real OCR + parsed results from `POST /debug/ocr-probe`, then compare to expected:
+**Actual OCR from our web tool (live site):** Fetch from the live site’s `POST /debug/ocr-probe` (no local backend). Set `DEBUG_OCR_SECRET` to match the server, then:
 
 ```bash
 DEBUG_OCR_SECRET=your-secret python backend/scripts/fetch_ocr_from_web_tool.py   # writes test_receipts/ocr/*.json

@@ -2,11 +2,11 @@
 """
 Fetch actual OCR + parsed results from our web tool (POST /debug/ocr-probe) for each
 test receipt image. Saves one JSON per image to test_receipts/ocr/<filename>.json.
-Run with backend up and DEBUG_OCR_SECRET set; pass base URL and secret via env.
+Uses the **live site** by default (no local backend on this machine).
 
-  DEBUG_OCR_SECRET=your-secret
-  DEBUG_OCR_BASE_URL=http://127.0.0.1:8000   # optional, default localhost:8000
+  DEBUG_OCR_SECRET=your-secret   # must be set on the server and here
   python backend/scripts/fetch_ocr_from_web_tool.py
+  # Override: DEBUG_OCR_BASE_URL=https://other.example.com
 """
 import json
 import os
@@ -23,7 +23,7 @@ backend = Path(__file__).resolve().parent.parent
 repo_root = backend.parent
 test_dir = repo_root / "test_receipts"
 ocr_dir = test_dir / "ocr"
-base_url = os.environ.get("DEBUG_OCR_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+base_url = os.environ.get("DEBUG_OCR_BASE_URL", "https://r.alti2.de").rstrip("/")
 secret = os.environ.get("DEBUG_OCR_SECRET")
 if not secret:
     print("Set DEBUG_OCR_SECRET", file=sys.stderr)
