@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 
 try:
     import pytesseract
-    from PIL import Image
+    from PIL import Image, ImageFilter
     HAS_OCR = True
 except ImportError:
     HAS_OCR = False
@@ -172,6 +172,22 @@ def _crop_receipt_to_rect(pil_image: Image.Image) -> Optional[Image.Image]:
         return None
 
 
+def _preprocess_for_ocr(img: "Image.Image") -> "Image.Image":
+    """Resize up if small, convert to grayscale, sharpen. Improves tesseract accuracy."""
+    w, h = img.size
+    min_dim = min(w, h)
+    # Tesseract prefers ~300 DPI; upscale if small (e.g. phone photo downscaled)
+    if min_dim < 1200:
+        scale = 2400 / min_dim
+        new_w = max(400, int(w * scale))
+        new_h = max(400, int(h * scale))
+        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    if img.mode != "L":
+        img = img.convert("L")
+    img = img.filter(ImageFilter.SHARPEN)
+    return img
+
+
 def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
     if not HAS_OCR:
         return ""
@@ -182,7 +198,8 @@ def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
             images = convert_from_bytes(image_bytes, first_page=1, last_page=2)
             text_parts = []
             for img in images:
-                text_parts.append(pytesseract.image_to_string(img))
+                prepped = _preprocess_for_ocr(img)
+                text_parts.append(pytesseract.image_to_string(prepped))
             return "\n".join(text_parts)
         if mime_type == "image/heic" and not HAS_HEIF:
             return ""
@@ -196,9 +213,20 @@ def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
             buf.seek(0)
             img = Image.open(buf)
         cropped = _crop_receipt_to_rect(img)
-        if cropped is not None:
-            img = cropped
-        return pytesseract.image_to_string(img)
+        # Multiple passes: preprocessed full, preprocessed crop (if different), preprocessed bottom region (totals often there)
+        texts = []
+        prepped_full = _preprocess_for_ocr(img)
+        texts.append(pytesseract.image_to_string(prepped_full))
+        if cropped is not None and cropped.size != img.size:
+            prepped_crop = _preprocess_for_ocr(cropped)
+            texts.append(pytesseract.image_to_string(prepped_crop))
+        w, h = img.size
+        if h > 200:
+            bottom = img.crop((0, int(h * 0.55), w, h))
+            prepped_bottom = _preprocess_for_ocr(bottom)
+            texts.append(pytesseract.image_to_string(prepped_bottom))
+        combined = "\n".join(t.strip() for t in texts if t.strip())
+        return combined
     except Exception as e:
         if mime_type == "image/heic":
             # Only surface as HEIC decode failure if the error is from open/save, not from tesseract
