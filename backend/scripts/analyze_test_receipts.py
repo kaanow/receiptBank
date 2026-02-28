@@ -114,7 +114,7 @@ def main():
     lines = [
         "# Test receipt analysis",
         "",
-        "Results from the **live site** (https://r.alti2.de). No local backend. See **docs/TESTING.md** for the plan and task checklist.",
+        "Results from **run_receipt_ocr.py** (app's OCR pipeline). See **docs/TESTING.md**.",
         "",
         "| File | Raw OCR (excerpt) | Parsed | Expected | Match |",
         "|------|-------------------|--------|----------|-------|",
