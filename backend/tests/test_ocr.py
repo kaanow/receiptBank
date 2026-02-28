@@ -25,3 +25,27 @@ def test_extract_pst_sanity_over_total():
         assert data["tax_gst"] == 3.67
     finally:
         ocr._image_to_text = old_fn
+
+
+def test_extract_petro_canada_full():
+    """Petro-Canada receipt: date 2026-61-23 -> 2026-01-23, GST INCLUDED, PST reg # rejected."""
+    text = """tage Po- CANADA
+> HWY 4 WEST
+GST #- 8863696026
+PST 4: 14792877
+2026-61-23 16:67:41
+Fuel sales $ 77.17
+GST INCLUDED $3.67
+TOTAL $77.17"""
+    from app import ocr
+    old_fn = ocr._image_to_text
+    try:
+        ocr._image_to_text = lambda b, m: text
+        data = extract_receipt_data(b"fake", "image/jpeg")
+        assert data["vendor"] == "PETRO-CANADA"
+        assert data["date"] is not None and str(data["date"])[:10] == "2026-01-23"
+        assert data["amount"] == 77.17
+        assert data["tax_gst"] == 3.67
+        assert data["tax_pst"] is None
+    finally:
+        ocr._image_to_text = old_fn
