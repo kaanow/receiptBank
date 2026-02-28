@@ -63,6 +63,12 @@ body {
   font-size: 0.95rem;
   color: #666;
 }
+.receipt-preview__status {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.95rem;
+  color: #666;
+}
 .page ul { list-style: none; padding-left: 0; }
 .page li { padding: 0.25rem 0; }
 .page a { color: #06c; }

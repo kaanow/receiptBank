@@ -143,16 +143,17 @@ export default function UploadReceipt() {
         </label>
         {file && (
           <div className="receipt-preview" aria-label="Receipt preview">
-            {extracted?.preview_data_url ? (
+            {loading && !extracted ? (
+              <p className="receipt-preview__status">Extracting data…</p>
+            ) : extracted?.preview_data_url ? (
               <img src={extracted.preview_data_url} alt="Receipt" className="receipt-preview__img" />
-            ) : previewUrl ? (
+            ) : extracted && previewUrl ? (
               <img src={previewUrl} alt="Receipt" className="receipt-preview__img" />
-            ) : (
+            ) : extracted ? (
               <p className="receipt-preview__pdf">PDF: {file.name}</p>
-            )}
+            ) : null}
           </div>
         )}
-        {loading && !extracted && <p>Extracting data…</p>}
         {extracted && (
           <div className="extracted-fields">
             <p className="form-hint">Review and correct the extracted data before saving.</p>
