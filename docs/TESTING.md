@@ -1,14 +1,24 @@
 # Receipt testing
 
-Run the **same OCR pipeline the app uses** (in-process, no server, no credentials). Then compare to expectations.
+Run the **same OCR pipeline the app uses** (in-process). No server, no login, no account.
 
-## How it works
+## What’s the live site’s OCR output for a local image?
 
-1. **Run the pipeline** on each image in `test_receipts/`:
+Use the same code the live site runs: `run_receipt_ocr.py`. It produces the same `raw_text` and `parsed` (aside from tesseract/env differences).
+
+- **One file:** `python backend/scripts/run_receipt_ocr.py /path/to/image.jpg`  
+  Writes `test_receipts/ocr/<filename>.json`.
+- **All images in test_receipts/:** `python backend/scripts/run_receipt_ocr.py`
+
+Needs tesseract installed (e.g. `brew install tesseract`) for non-empty OCR.
+
+## Compare to expectations
+
+1. **Run the pipeline** (all images in test_receipts/):
    ```bash
    python backend/scripts/run_receipt_ocr.py
    ```
-   Uses app code: HEIC→PNG (if needed), tesseract, parser. Writes `test_receipts/ocr/<filename>.json` (raw_text + parsed). Needs tesseract installed (e.g. `brew install tesseract`) for non-empty OCR.
+   Writes `test_receipts/ocr/<filename>.json` (raw_text + parsed).
 
 2. **Compare and report**:
    ```bash

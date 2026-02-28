@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
-Run the app's OCR pipeline on test_receipts (same code as upload flow).
-No server, no login, no credentials. Writes test_receipts/ocr/<filename>.json.
-From repo root: python backend/scripts/run_receipt_ocr.py
+Run the app's OCR pipeline (same code as the live site). No server, no login, no account.
+Writes test_receipts/ocr/<filename>.json with raw_text and parsed.
+
+  python backend/scripts/run_receipt_ocr.py
+    → all images in test_receipts/
+  python backend/scripts/run_receipt_ocr.py /path/to/any/image.jpg
+    → that one file, writes test_receipts/ocr/image.jpg.json
 """
 import json
 import sys
@@ -19,22 +23,14 @@ test_dir = repo_root / "test_receipts"
 ocr_dir = test_dir / "ocr"
 ocr_dir.mkdir(parents=True, exist_ok=True)
 
-exts = ("*.jpg", "*.jpeg", "*.png", "*.heic", "*.HEIC")
-paths = []
-for e in exts:
-    paths.extend(test_dir.glob(e))
-paths = sorted(set(p for p in paths if p.is_file()))
-if not paths:
-    print("No images in test_receipts/")
-    sys.exit(1)
 
-for path in paths:
+def process(path: Path) -> None:
     raw = path.read_bytes()
     if path.suffix.lower() == ".heic":
         png = heic_to_png_bytes(raw)
         if not png:
             print(f"  {path.name}: HEIC decode failed")
-            continue
+            return
         content, mime = png, "image/png"
     else:
         mime = "image/jpeg" if path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
@@ -49,6 +45,30 @@ for path in paths:
     out_path = ocr_dir / f"{path.name}.json"
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
-    print(f"  {path.name} -> {out_path.name}  (raw: {len(raw_text)} chars)")
+    print(f"  {path.name} -> {out_path}  (raw: {len(raw_text)} chars)")
 
-print("Done. Run python backend/scripts/analyze_test_receipts.py to compare.")
+
+def main():
+    if len(sys.argv) > 1:
+        p = Path(sys.argv[1]).resolve()
+        if not p.is_file():
+            print(f"Not a file: {p}")
+            sys.exit(1)
+        process(p)
+        return
+
+    exts = ("*.jpg", "*.jpeg", "*.png", "*.heic", "*.HEIC")
+    paths = []
+    for e in exts:
+        paths.extend(test_dir.glob(e))
+    paths = sorted(set(p for p in paths if p.is_file()))
+    if not paths:
+        print("No images in test_receipts/")
+        sys.exit(1)
+    for path in paths:
+        process(path)
+    print("Done. Run python backend/scripts/analyze_test_receipts.py to compare.")
+
+
+if __name__ == "__main__":
+    main()
