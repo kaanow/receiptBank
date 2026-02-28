@@ -63,6 +63,11 @@ TOTAL_LABELS = re.compile(
     r"(?:total|amount\s+due|balance\s+due|grand\s+total|subtotal|sum)\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)",
     re.I,
 )
+# Balance/Total line with $ amount (e.g. "Balance:$98.1") to prefer over address numbers
+BALANCE_TOTAL_LINE = re.compile(
+    r"(?:balance|total)\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2}|\d+\.\d{1,2})",
+    re.I,
+)
 GST_PATTERN = re.compile(r"G\.?S\.?T\.?\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
 GST_INCLUDED_PATTERN = re.compile(r"GST\s+INCLUDED\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
 PST_PATTERN = re.compile(r"P\.?S\.?T\.?\s*(?:#?\s*\d*)?\s*:?\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)", re.I)
@@ -114,13 +119,19 @@ def _extract_total(text: str) -> Optional[float]:
         amt = _parse_amount(m.group(1))
         if amt is not None and amt > 0:
             candidates.append(amt)
+    for m in BALANCE_TOTAL_LINE.finditer(text):
+        amt = _parse_amount(m.group(1))
+        if amt is not None and amt > 0 and amt < 10000:
+            candidates.append(amt)
     if candidates:
-        return candidates[-1]
+        preferred = [a for a in candidates if a < 1000]
+        return (preferred[-1] if preferred else candidates[-1])
     amounts = MONEY.findall(text)
     if amounts:
         parsed = [_parse_amount(a) for a in amounts if _parse_amount(a)]
         if parsed:
-            return max(parsed)
+            under_1k = [a for a in parsed if 0 < a < 1000]
+            return max(under_1k) if under_1k else max(parsed)
     return None
 
 
@@ -134,6 +145,9 @@ def _extract_tax(text: str, pattern: re.Pattern, max_reasonable: Optional[float]
 
 
 def _extract_vendor(text: str) -> str:
+    text_lower = text.lower()
+    if "ferries" in text_lower or "bcf " in text_lower or "ene bay" in text_lower or "bc ferries" in text_lower:
+        return "BC Ferries"
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     for i, line in enumerate(lines[:8]):
         if len(line) > 3 and len(line) < 80:
