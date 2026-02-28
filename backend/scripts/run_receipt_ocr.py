@@ -3,12 +3,18 @@
 Run the app's OCR pipeline (same code as the live site). No server, no login, no account.
 Writes test_receipts/ocr/<filename>.json with raw_text and parsed.
 
-  python backend/scripts/run_receipt_ocr.py
+Dependencies:
+- Backend Python deps: run from backend venv or a Python with pip install -r backend/requirements.txt.
+- Tesseract binary on PATH (e.g. brew install tesseract). Without it, raw_text is empty.
+- HEIC: pillow-heif (+ libheif on Linux). PDF: pdf2image (+ poppler).
+
+  cd backend && python scripts/run_receipt_ocr.py
     → all images in test_receipts/
-  python backend/scripts/run_receipt_ocr.py /path/to/any/image.jpg
-    → that one file, writes test_receipts/ocr/image.jpg.json
+  cd backend && python scripts/run_receipt_ocr.py /path/to/image.jpg
+    → that one file, writes test_receipts/ocr/<filename>.json
 """
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -49,6 +55,8 @@ def process(path: Path) -> None:
 
 
 def main():
+    if not shutil.which("tesseract"):
+        print("Tesseract not found on PATH (e.g. brew install tesseract). OCR will be empty.")
     if len(sys.argv) > 1:
         p = Path(sys.argv[1]).resolve()
         if not p.is_file():

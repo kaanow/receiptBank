@@ -1,0 +1,17 @@
+---
+description: When to enable/disable the public no-auth OCR endpoint
+alwaysApply: true
+---
+
+# Public extract-test endpoint (POST /api/expenses/extract-test)
+
+**What it is:** A route that runs the server’s OCR pipeline without login. Documented in `docs/TESTING.md`. Script: `backend/scripts/fetch_ocr_from_server.py`.
+
+**Policy:**
+
+- **Default: disabled.** The route is commented out in `backend/app/routers/expenses.py` (search for `extract-test`). Leave it disabled when there are no outstanding receipt/OCR testing tasks that need server-side OCR without auth.
+- **When you have receipt or OCR testing work** that would benefit from a public endpoint (e.g. comparing live server OCR to expectations, testing HEIC on deploy): **re-enable** the route by uncommenting the `@router.post("/extract-test")` block and the full `extract_receipt_test` function in `backend/app/routers/expenses.py`.
+- **When that work is done** (no related testing tasks left): **disable** it again by commenting out the same block. Take the initiative to turn it off; you don’t need to ask first if there are no open receipt-testing tasks.
+- **Do not remove** the commented block or the script or the TESTING.md section; keep them so the feature can be turned back on next time.
+
+Summary: enable for receipt/OCR testing → disable when done → re-enable next time you have related tasks.

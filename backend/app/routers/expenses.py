@@ -142,6 +142,42 @@ async def extract_receipt_debug(
     return {"raw_text": raw_text, "parsed": result}
 
 
+@router.post("/extract-test")
+async def extract_receipt_test(
+    file: UploadFile = File(...),
+):
+    """Run OCR on the server without login. Same response as extract-debug."""
+    from app.ocr import _image_to_text, extract_receipt_data, HAS_HEIF, heic_to_png_bytes
+    content_type = file.content_type or "application/octet-stream"
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    content_type = _normalize_receipt_content_type(content_type, content, file.filename)
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
+    if content_type == "image/heic" and not HAS_HEIF:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="HEIC decoding is not available on this server (missing libheif).",
+        )
+    if content_type == "image/heic":
+        png_bytes = heic_to_png_bytes(content)
+        if not png_bytes:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="HEIC decode failed")
+        content, content_type = png_bytes, "image/png"
+    try:
+        raw_text = _image_to_text(content, content_type)
+        data = extract_receipt_data(content, content_type)
+    except RuntimeError as e:
+        if "HEIC decode failed" in str(e):
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+        raise
+    result = dict(data)
+    if result.get("date"):
+        result["date"] = result["date"].isoformat()
+    return {"raw_text": raw_text, "parsed": result}
+
+
 @router.post("/from-receipt", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense_from_receipt(
     file: UploadFile = File(...),
