@@ -14,6 +14,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libheif1 \
     tesseract-ocr \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*

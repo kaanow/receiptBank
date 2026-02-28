@@ -1,4 +1,4 @@
-from app.ocr import extract_receipt_data
+from app.ocr import extract_receipt_data, _image_to_text, HAS_HEIF, _is_heic_bytes
 
 
 def test_extract_vendor_petro_canada_fix():
@@ -94,3 +94,28 @@ Total Changes > 0.00
         assert data["amount"] == 20.0
     finally:
         ocr._image_to_text = old_fn
+
+
+def test_heic_decode_when_available():
+    """If HAS_HEIF and a HEIC file exists in test_receipts, decode returns non-empty or no exception."""
+    import pytest
+    from pathlib import Path
+    heic_dir = Path(__file__).resolve().parent.parent.parent / "test_receipts"
+    heic_paths = list(heic_dir.glob("*.heic")) + list(heic_dir.glob("*.HEIC"))
+    if not heic_paths or not HAS_HEIF:
+        pytest.skip("No HEIC file in test_receipts or pillow-heif/libheif not available")
+    path = heic_paths[0]
+    content = path.read_bytes()
+    text = _image_to_text(content, "image/heic")
+    # Should not crash; may return empty if tesseract fails on content, but decode should work
+    assert isinstance(text, str)
+
+
+def test_heic_magic_bytes_detection():
+    """_is_heic_bytes detects HEIC by ftyp box and brand."""
+    assert _is_heic_bytes(b"\x00\x00\x00\x20ftypheic\x00\x00\x00\x00") is True
+    assert _is_heic_bytes(b"\x00\x00\x00\x20ftypmif1\x00\x00\x00\x00") is True
+    assert _is_heic_bytes(b"xxxxftypheic") is True
+    assert _is_heic_bytes(b"\x00\x00\x00\x0cftypiso5") is False
+    assert _is_heic_bytes(b"too short") is False
+    assert _is_heic_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF") is False

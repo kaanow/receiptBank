@@ -17,18 +17,37 @@ ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/hei
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
 
+def _normalize_receipt_content_type(declared: str, content: bytes, filename: Optional[str]) -> str:
+    """Treat octet-stream or missing type as image/heic when file is HEIC by name or magic bytes."""
+    if declared in ALLOWED_MIME:
+        return declared
+    if not declared or declared == "application/octet-stream":
+        from app.ocr import _is_heic_bytes
+        if filename and filename.lower().endswith(".heic"):
+            return "image/heic"
+        if _is_heic_bytes(content):
+            return "image/heic"
+    return declared
+
+
 @router.post("/extract", response_model=ExtractResponse)
 async def extract_receipt(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    from app.ocr import extract_receipt_data
+    from app.ocr import extract_receipt_data, HAS_HEIF
     content_type = file.content_type or "application/octet-stream"
-    if content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    content_type = _normalize_receipt_content_type(content_type, content, file.filename)
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
+    if content_type == "image/heic" and not HAS_HEIF:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="HEIC decoding is not available on this server (missing libheif).",
+        )
     data = extract_receipt_data(content, content_type)
     return ExtractResponse(**data)
 
@@ -39,13 +58,19 @@ async def extract_receipt_raw_text(
     current_user: User = Depends(get_current_user),
 ):
     """Return raw OCR text only (for debugging / field mapping feedback)."""
-    from app.ocr import _image_to_text
+    from app.ocr import _image_to_text, HAS_HEIF
     content_type = file.content_type or "application/octet-stream"
-    if content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    content_type = _normalize_receipt_content_type(content_type, content, file.filename)
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
+    if content_type == "image/heic" and not HAS_HEIF:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="HEIC decoding is not available on this server (missing libheif).",
+        )
     raw_text = _image_to_text(content, content_type)
     return {"raw_text": raw_text}
 
@@ -65,18 +90,24 @@ async def create_expense_from_receipt(
     db: Session = Depends(get_db),
 ):
     from app.accounts_helpers import get_allowed_account_ids
-    from app.ocr import extract_receipt_data
+    from app.ocr import extract_receipt_data, HAS_HEIF
     if not user_can_access_account(db, current_user.id, account_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
     account = db.query(Account).filter(Account.id == account_id).first()
     if not account:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
     content_type = file.content_type or "application/octet-stream"
-    if content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    content_type = _normalize_receipt_content_type(content_type, content, file.filename)
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
+    if content_type == "image/heic" and not HAS_HEIF:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="HEIC decoding is not available on this server (missing libheif).",
+        )
     data = extract_receipt_data(content, content_type)
     from datetime import datetime as dt
     def _opt(s):

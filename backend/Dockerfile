@@ -3,9 +3,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system deps if needed (e.g. for psycopg2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libheif1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

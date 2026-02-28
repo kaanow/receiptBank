@@ -139,7 +139,7 @@ export default function UploadReceipt() {
       <form onSubmit={handleSubmit}>
         <label>
           Receipt (image or PDF)
-          <input ref={fileInputRef} type="file" accept="image/*,application/pdf" onChange={onFileChange} />
+          <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.heic" onChange={onFileChange} />
         </label>
         {file && (
           <div className="receipt-preview" aria-label="Receipt preview">

@@ -29,6 +29,13 @@ except ImportError:
     HAS_HEIF = False
 
 
+def _is_heic_bytes(content: bytes) -> bool:
+    """Detect HEIC/HEIF by ISO base media ftyp box (bytes 4-7 'ftyp', 8-11 brand 'heic' or 'mif1')."""
+    if len(content) < 12:
+        return False
+    return content[4:8] == b"ftyp" and content[8:12] in (b"heic", b"mif1", b"heix", b"hevx", b"msf1")
+
+
 def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
     if not HAS_OCR:
         return ""
