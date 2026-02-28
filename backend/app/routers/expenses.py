@@ -13,7 +13,7 @@ from app.models import User
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
-ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"}
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "application/pdf"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
 

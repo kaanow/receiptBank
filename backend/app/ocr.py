@@ -20,6 +20,13 @@ try:
 except ImportError:
     HAS_PDF2IMAGE = False
 
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    HAS_HEIF = True
+except ImportError:
+    HAS_HEIF = False
+
 
 def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
     if not HAS_OCR:
@@ -33,6 +40,8 @@ def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
             for img in images:
                 text_parts.append(pytesseract.image_to_string(img))
             return "\n".join(text_parts)
+        if mime_type == "image/heic" and not HAS_HEIF:
+            return ""
         img = Image.open(io.BytesIO(image_bytes))
         if img.mode not in ("L", "RGB"):
             img = img.convert("RGB")
