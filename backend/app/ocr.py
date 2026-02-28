@@ -28,6 +28,13 @@ try:
 except ImportError:
     HAS_HEIF = False
 
+try:
+    import cv2
+    import numpy as np
+    HAS_RECEIPT_CROP = True
+except ImportError:
+    HAS_RECEIPT_CROP = False
+
 
 def _is_heic_bytes(content: bytes) -> bool:
     """Detect HEIC/HEIF by ISO base media ftyp box (bytes 4-7 'ftyp', 8-11 brand 'heic' or 'mif1')."""
@@ -64,6 +71,95 @@ def png_to_data_url(png_bytes: bytes) -> str:
     return "data:image/png;base64," + base64.standard_b64encode(png_bytes).decode("ascii")
 
 
+def _order_quad_points(pts: "np.ndarray") -> "np.ndarray":
+    """Order 4 points as [top-left, top-right, bottom-right, bottom-left] for perspective transform."""
+    pts = np.array(pts, dtype=np.float32).reshape(4, 2)
+    s = pts.sum(axis=1)
+    diff = np.diff(pts, axis=1)
+    top_left = pts[np.argmin(s)]
+    bottom_right = pts[np.argmax(s)]
+    top_right = pts[np.argmin(diff)]
+    bottom_left = pts[np.argmax(diff)]
+    return np.array([top_left, top_right, bottom_right, bottom_left], dtype=np.float32)
+
+
+def _crop_receipt_to_rect(pil_image: Image.Image) -> Optional[Image.Image]:
+    """
+    Detect a roughly rectangular receipt in the image (central document assumption),
+    apply perspective transform to get a top-down rectangle, return the cropped image.
+    Returns None if no suitable contour found (e.g. already flat receipt or no clear edges).
+    """
+    if not HAS_RECEIPT_CROP:
+        return None
+    try:
+        img_arr = np.array(pil_image)
+        if img_arr.ndim == 2:
+            gray = img_arr
+        else:
+            gray = cv2.cvtColor(img_arr, cv2.COLOR_RGB2GRAY)
+        h, w = gray.shape
+        if h < 50 or w < 50:
+            return None
+        blurred = cv2.GaussianBlur(gray, (5, 5), 1)
+        edged = cv2.Canny(blurred, 50, 150)
+        contours, _ = cv2.findContours(edged, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        area_thresh = (w * h) * 0.03  # at least 3% of image
+        best_quad = None
+        best_area = 0
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < area_thresh:
+                continue
+            peri = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+            if len(approx) != 4:
+                continue
+            rect_area = cv2.contourArea(approx)
+            if rect_area < best_area:
+                continue
+            x, y, rw, rh = cv2.boundingRect(approx)
+            aspect = max(rw, rh) / (min(rw, rh) + 1e-6)
+            if aspect > 8 or aspect < 0.15:  # receipt-like aspect
+                continue
+            cx = x + rw / 2
+            cy = y + rh / 2
+            if cx < w * 0.1 or cx > w * 0.9 or cy < h * 0.1 or cy > h * 0.9:
+                continue
+            best_quad = approx
+            best_area = rect_area
+        if best_quad is None:
+            return None
+        src_pts = _order_quad_points(best_quad)
+        tw = max(
+            np.linalg.norm(src_pts[1] - src_pts[0]),
+            np.linalg.norm(src_pts[2] - src_pts[3]),
+        )
+        th = max(
+            np.linalg.norm(src_pts[3] - src_pts[0]),
+            np.linalg.norm(src_pts[2] - src_pts[1]),
+        )
+        tw, th = int(round(tw)), int(round(th))
+        if tw < 20 or th < 20:
+            return None
+        dst_pts = np.array(
+            [[0, 0], [tw - 1, 0], [tw - 1, th - 1], [0, th - 1]],
+            dtype=np.float32,
+        )
+        M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+        warped = cv2.warpPerspective(
+            img_arr, M, (tw, th),
+            flags=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_REPLICATE,
+        )
+        if warped.ndim == 2:
+            out = Image.fromarray(warped)
+        else:
+            out = Image.fromarray(warped)
+        return out
+    except Exception:
+        return None
+
+
 def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
     if not HAS_OCR:
         return ""
@@ -87,6 +183,9 @@ def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
             img.save(buf, format="PNG")
             buf.seek(0)
             img = Image.open(buf)
+        cropped = _crop_receipt_to_rect(img)
+        if cropped is not None:
+            img = cropped
         return pytesseract.image_to_string(img)
     except Exception as e:
         if mime_type == "image/heic":

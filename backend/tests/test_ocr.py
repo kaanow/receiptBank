@@ -1,4 +1,4 @@
-from app.ocr import extract_receipt_data, _image_to_text, HAS_HEIF, _is_heic_bytes
+from app.ocr import extract_receipt_data, _image_to_text, HAS_HEIF, _is_heic_bytes, _crop_receipt_to_rect, HAS_RECEIPT_CROP
 
 
 def test_extract_vendor_petro_canada_fix():
@@ -119,3 +119,14 @@ def test_heic_magic_bytes_detection():
     assert _is_heic_bytes(b"\x00\x00\x00\x0cftypiso5") is False
     assert _is_heic_bytes(b"too short") is False
     assert _is_heic_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF") is False
+
+
+def test_crop_receipt_to_rect_no_crash():
+    """_crop_receipt_to_rect accepts a PIL Image and returns None or a PIL Image."""
+    from PIL import Image
+    img = Image.new("RGB", (100, 100), color=(240, 240, 240))
+    result = _crop_receipt_to_rect(img)
+    if HAS_RECEIPT_CROP:
+        assert result is None or isinstance(result, Image.Image)
+    else:
+        assert result is None
