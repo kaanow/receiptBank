@@ -1,6 +1,6 @@
 # ReceiptBank
 
-Mobile-friendly expense and receipt tracker: upload receipt images/PDFs, auto-extract data (OCR), tag by account/job, run reports (tax and monthly) with optional receipt bundles. Multi-user with grantable access. CAD only; BC rental categories supported.
+Mobile-friendly expense and receipt tracker: upload receipt images/PDFs, auto-extract data (OCR), tag by account/job, run reports (tax and monthly) with optional receipt bundles. Multi-user with grantable access. CAD only; BC rental categories supported. **UI: dark mode only.**
 
 ## Setup
 

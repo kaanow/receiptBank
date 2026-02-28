@@ -1,0 +1,12 @@
+---
+description: UI uses dark mode only; no light theme
+alwaysApply: true
+---
+
+# UI: Dark mode, always
+
+This project uses **dark mode only**. There is no light theme or toggle.
+
+- Keep all UI (CSS, new components, forms, tables) using the dark palette.
+- Use the existing CSS variables in `frontend/src/index.css`: `--bg`, `--bg-elevated`, `--bg-input`, `--text`, `--text-muted`, `--border`, `--accent`, `--error`.
+- Do not introduce a light theme or theme switcher unless the user explicitly asks for it.
