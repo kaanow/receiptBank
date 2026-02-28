@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 
 try:
     import pytesseract
-    from PIL import Image, ImageFilter
+    from PIL import Image, ImageFilter, ImageEnhance
     HAS_OCR = True
 except ImportError:
     HAS_OCR = False
@@ -173,7 +173,7 @@ def _crop_receipt_to_rect(pil_image: Image.Image) -> Optional[Image.Image]:
 
 
 def _preprocess_for_ocr(img: "Image.Image") -> "Image.Image":
-    """Resize up if small, convert to grayscale, sharpen. Improves tesseract accuracy."""
+    """Resize up if small, convert to grayscale, boost contrast, sharpen. Improves tesseract accuracy."""
     w, h = img.size
     min_dim = min(w, h)
     # Tesseract prefers ~300 DPI; upscale if small (e.g. phone photo downscaled)
@@ -184,6 +184,8 @@ def _preprocess_for_ocr(img: "Image.Image") -> "Image.Image":
         img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
     if img.mode != "L":
         img = img.convert("L")
+    # Boost contrast so faint or grey text is easier for tesseract
+    img = ImageEnhance.Contrast(img).enhance(1.4)
     img = img.filter(ImageFilter.SHARPEN)
     return img
 
@@ -225,6 +227,8 @@ def _image_to_text(image_bytes: bytes, mime_type: str) -> str:
             bottom = img.crop((0, int(h * 0.55), w, h))
             prepped_bottom = _preprocess_for_ocr(bottom)
             texts.append(pytesseract.image_to_string(prepped_bottom))
+        # Sparse-text pass: PSM 11 finds text in no particular order, helps irregular layouts or light text
+        texts.append(pytesseract.image_to_string(prepped_full, config="--psm 11"))
         combined = "\n".join(t.strip() for t in texts if t.strip())
         return combined
     except Exception as e:
