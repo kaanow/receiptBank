@@ -21,6 +21,8 @@ If fetch returns **404**: the debug route is not enabled on the server. Ensure t
 
 If fetch returns **403**: wrong or missing `X-Debug-Secret`. Use the same value as on the server.
 
+**Let the assistant run tests without you:** Set `DEBUG_OCR_SECRET` in production and share that value once. The assistant can then run `fetch_ocr_from_web_tool.py` against the live site to get real OCR for all images (no login, no manual uploads).
+
 ---
 
 ## Task checklist (multi-step receipt run)
