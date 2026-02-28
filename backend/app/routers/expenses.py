@@ -33,6 +33,23 @@ async def extract_receipt(
     return ExtractResponse(**data)
 
 
+@router.post("/extract-raw")
+async def extract_receipt_raw_text(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Return raw OCR text only (for debugging / field mapping feedback)."""
+    from app.ocr import _image_to_text
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File type not allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large (max 20MB)")
+    raw_text = _image_to_text(content, content_type)
+    return {"raw_text": raw_text}
+
+
 @router.post("/from-receipt", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense_from_receipt(
     file: UploadFile = File(...),
