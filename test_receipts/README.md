@@ -2,8 +2,14 @@
 
 Drop receipt images or PDFs here for local OCR testing.
 
-**Example:** Copy your Petro-Canada receipt here (e.g. `petro-canada-2026-01-23.jpg`).  
-Run from repo root:
+**Expected vs actual:** See `ANALYSIS.md` and `expected.json`. Run from repo root:
+```bash
+python backend/scripts/analyze_test_receipts.py          # compare parser to expected
+python backend/scripts/analyze_test_receipts.py --save-ocr   # same + save raw OCR to ocr/*.txt
+```
+With tesseract (or Docker: `./backend/scripts/run_ocr_receipts_docker.sh`) you get real OCR; then `--save-ocr` fills `ocr/` and `pytest backend/tests/test_ocr.py` will run regression tests against `expected.json`.
+
+**Quick one-file extract:** From repo root:
 ```bash
 cd backend && python -c "
 from pathlib import Path

@@ -130,3 +130,51 @@ def test_crop_receipt_to_rect_no_crash():
         assert result is None or isinstance(result, Image.Image)
     else:
         assert result is None
+
+
+def test_receipt_expected_vs_saved_ocr():
+    """When test_receipts/ocr/<stem>.txt exists and expected.json has expectations, parser output must match."""
+    import json
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    expected_path = repo_root / "test_receipts" / "expected.json"
+    ocr_dir = repo_root / "test_receipts" / "ocr"
+    if not expected_path.exists() or not ocr_dir.exists():
+        import pytest
+        pytest.skip("test_receipts/expected.json or test_receipts/ocr/ not present")
+
+    with open(expected_path) as f:
+        expected = json.load(f)
+
+    from app import ocr
+    old_fn = ocr._image_to_text
+
+    failures = []
+    for filename, exp in expected.items():
+        if filename.startswith("_") or exp is None:
+            continue
+        stem = Path(filename).stem
+        txt_path = ocr_dir / f"{stem}.txt"
+        if not txt_path.is_file():
+            continue
+        text = txt_path.read_text(encoding="utf-8")
+        try:
+            ocr._image_to_text = lambda b, m, t=text: t
+            data = extract_receipt_data(b"fake", "image/jpeg")
+        finally:
+            ocr._image_to_text = old_fn
+
+        got_date = data["date"].isoformat()[:10] if data.get("date") else None
+        if exp.get("vendor") is not None and data.get("vendor") != exp["vendor"]:
+            failures.append(f"{filename}: vendor got {data.get('vendor')} expected {exp['vendor']}")
+        if exp.get("date") is not None and got_date != exp["date"]:
+            failures.append(f"{filename}: date got {got_date} expected {exp['date']}")
+        if exp.get("amount") is not None and data.get("amount") != exp["amount"]:
+            failures.append(f"{filename}: amount got {data.get('amount')} expected {exp['amount']}")
+        for key in ("tax_gst", "tax_pst", "amount_subtotal"):
+            if exp.get(key) is not None and data.get(key) != exp.get(key):
+                failures.append(f"{filename}: {key} got {data.get(key)} expected {exp.get(key)}")
+
+    if failures:
+        raise AssertionError("Expected vs saved OCR mismatches:\n" + "\n".join(failures))

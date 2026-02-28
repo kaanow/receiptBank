@@ -36,6 +36,10 @@ data/
 # Test receipt images (keep folder + README, ignore dropped files)
 test_receipts/*
 !test_receipts/README.md
+!test_receipts/expected.json
+!test_receipts/ANALYSIS.md
+!test_receipts/ocr/
+!test_receipts/ocr/*.txt
 test_receipts/cropped/
 
 .coverage

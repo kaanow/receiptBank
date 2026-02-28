@@ -1,0 +1,30 @@
+{
+  "_comment": "Expected parsed fields per test receipt for regression. Run backend/scripts/run_ocr_on_receipts.py or run_ocr_receipts_docker.sh, then compare to this. Date as YYYY-MM-DD, amounts as numbers, null if not expected.",
+  "Ferry.HEIC": {
+    "vendor": "BC Ferries",
+    "date": "2026-01-01",
+    "amount": 20.0,
+    "amount_subtotal": null,
+    "tax_gst": null,
+    "tax_pst": null
+  },
+  "Ferry_converted.jpg": {
+    "vendor": "BC Ferries",
+    "date": "2026-01-01",
+    "amount": 20.0,
+    "amount_subtotal": null,
+    "tax_gst": null,
+    "tax_pst": null
+  },
+  "fuel_20260123-1612.jpg": {
+    "vendor": "PETRO-CANADA",
+    "date": "2026-01-23",
+    "amount": 77.17,
+    "amount_subtotal": null,
+    "tax_gst": 3.67,
+    "tax_pst": null
+  },
+  "IMG_6892.HEIC": null,
+  "IMG_6892_converted.jpg": null,
+  "Tess tools - air sprayer.HEIC": null
+}
