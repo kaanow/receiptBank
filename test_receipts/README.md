@@ -2,22 +2,23 @@
 
 Drop receipt images or PDFs here for local OCR testing.
 
-**Expected vs actual:** See `ANALYSIS.md` and `expected.json`. Run from repo root:
+**Actual OCR from our web tool:** With the backend running (and `DEBUG_OCR_SECRET` set), fetch real OCR + parsed results from `POST /debug/ocr-probe`, then compare to expected:
+
 ```bash
-python backend/scripts/analyze_test_receipts.py          # compare parser to expected
-python backend/scripts/analyze_test_receipts.py --save-ocr   # same + save raw OCR to ocr/*.txt
+DEBUG_OCR_SECRET=your-secret python backend/scripts/fetch_ocr_from_web_tool.py   # writes test_receipts/ocr/*.json
+python backend/scripts/analyze_test_receipts.py   # compares to expected.json, writes ANALYSIS.md
 ```
-With tesseract (or Docker: `./backend/scripts/run_ocr_receipts_docker.sh`) you get real OCR; then `--save-ocr` fills `ocr/` and `pytest backend/tests/test_ocr.py` will run regression tests against `expected.json`.
+
+See `ANALYSIS.md` for the comparison table (raw OCR excerpt, parsed, expected, match).
 
 **Quick one-file extract:** From repo root:
 ```bash
 cd backend && python -c "
 from pathlib import Path
 from app.ocr import extract_receipt_data
-path = Path('../test_receipts').glob('*').__next__()
+path = next(Path('../test_receipts').glob('*.*'))
 content = path.read_bytes()
 mime = 'image/jpeg' if path.suffix.lower() in ('.jpg','.jpeg') else 'image/png' if path.suffix.lower()=='.png' else 'application/pdf'
-d = extract_receipt_data(content, mime)
-print(d)
+print(extract_receipt_data(content, mime))
 "
 ```
