@@ -17,3 +17,7 @@ Mobile-friendly expense and receipt tracker: upload receipt images/PDFs, auto-ex
 ## CI
 
 GitHub Actions runs on push to `main`: backend tests (pytest) and frontend tests (npm test). See `.github/workflows/ci.yml`.
+
+## Project rules
+
+The `.cursor/` folder (including `.cursor/rules/`) is committed so that pulling the repo preserves rules and conventions; include it in commits when you change it.

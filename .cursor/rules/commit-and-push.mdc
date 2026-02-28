@@ -1,0 +1,29 @@
+---
+description: Commit and push code changes after completing coding tasks
+alwaysApply: true
+---
+
+# Git: Commit and push after code changes
+
+After making code changes that complete a task or fix:
+
+1. **Stage** all relevant changes: `git add` the modified and new files (do not add unrelated or ignored files).
+2. **Commit** with a clear, one-line message that describes what changed and why (e.g. "Add HEIC content-type normalization so browser uploads work").
+3. **Push** to the current branch: `git push origin <branch>` (typically `main`).
+
+---
+description: Commit and push code changes after completing coding tasks
+alwaysApply: true
+---
+
+# Git: Commit and push after code changes
+
+After making code changes that complete a task or fix:
+
+1. **Stage** all relevant changes: `git add` the modified and new files (do not add unrelated or ignored files).
+2. **Commit** with a clear, one-line message that describes what changed and why (e.g. "Add HEIC content-type normalization so browser uploads work").
+3. **Push** to the current branch: `git push origin <branch>` (typically `main`).
+
+**Include `.cursor/` when it changes.** It is appropriate to commit files in the `.cursor` folder (e.g. `.cursor/rules/*.mdc`). This lets prior work continue when pulling the repo (rules, conventions, notes).
+
+Skip commit/push only if the user explicitly asks not to, or the change was a trivial experiment/revert. When in doubt, commit and push.
