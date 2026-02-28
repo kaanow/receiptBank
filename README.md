@@ -26,5 +26,4 @@ The `.cursor/` folder (including `.cursor/rules/`) is committed so that pulling 
 
 ## Troubleshooting OCR
 
-- **Logged-in users**: Use **Debug OCR** (nav link) to upload a receipt and see raw OCR text plus parsed fields in one go. Same pipeline as the upload flow.
-- **Automation / assistants**: Set `DEBUG_OCR_SECRET` in the backend environment; then `POST /debug/ocr-probe` with header `X-Debug-Secret: <value>` and a file upload returns `{ "raw_text": "...", "parsed": { ... } }`. If `DEBUG_OCR_SECRET` is unset, the endpoint returns 404.
+Receipt testing: run `python backend/scripts/run_receipt_ocr.py` then `analyze_test_receipts.py`. See **docs/TESTING.md**.

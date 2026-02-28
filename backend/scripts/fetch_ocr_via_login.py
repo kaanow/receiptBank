@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Fetch OCR + parsed from the live site the same way the Debug OCR page does:
-log in with email/password (session), then POST each image to /api/expenses/extract-debug.
-No debug secret required. Saves test_receipts/ocr/<filename>.json.
+Fetch OCR + parsed from the live site: log in with email/password (session), then POST each image to /api/expenses/extract-debug.
+Saves test_receipts/ocr/<filename>.json.
 
 Create a test account on the site, then:
   RECEIPTBANK_TEST_EMAIL=you@example.com RECEIPTBANK_TEST_PASSWORD=xxx python backend/scripts/fetch_ocr_via_login.py
@@ -41,7 +40,7 @@ if not paths:
     print("No images in test_receipts/")
     sys.exit(1)
 
-# Same as Debug OCR page: login then extract-debug with session cookie
+# Login then extract-debug with session cookie
 client = httpx.Client(base_url=base_url, timeout=120.0, follow_redirects=True)
 try:
     r = client.post("/api/auth/login", json={"email": email, "password": password})

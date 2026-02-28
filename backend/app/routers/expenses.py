@@ -110,8 +110,8 @@ async def extract_receipt_debug(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    """Return raw OCR text and parsed data in one call (for Debug OCR page). Same pipeline as extract + extract-raw."""
-    from app.ocr import _image_to_text, extract_receipt_data, HAS_HEIF, heic_to_png_bytes, png_to_data_url
+    """Return raw OCR text and parsed data in one call. Same pipeline as extract + extract-raw."""
+    from app.ocr import _image_to_text, extract_receipt_data, HAS_HEIF, heic_to_png_bytes
     content_type = file.content_type or "application/octet-stream"
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
